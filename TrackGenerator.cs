@@ -1,17 +1,16 @@
-using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using UnityEditor;
 using UnityEngine;
 
 public class TrackGenerator : MonoBehaviour
 {
+    [Header("Map Settings")]
     [SerializeField] private Vector2 boundarySize;
 
     [SerializeField] private int minPoints;
     [SerializeField] private int maxPoints;
 
+
+    [Header("Limits")]
     [SerializeField] private int spacingIterations;
     [SerializeField] private int anglingIterations;
 
@@ -19,13 +18,10 @@ public class TrackGenerator : MonoBehaviour
     private float minPointSpacingSqr;
     [SerializeField] private float maxTurnAngle;
 
+
+    [Header("Midpoints")]
     [SerializeField] private float maxDisplacement;
     [SerializeField] private float displacementScale;
-
-    [SerializeField] private Transform cubeParent;
-    [SerializeField] private GameObject normalCube;
-    [SerializeField] private GameObject midpointCube;
-    private LineRenderer lineRenderer;
 
     private enum Orientation
     {
@@ -34,27 +30,12 @@ public class TrackGenerator : MonoBehaviour
         Anticlockwise
     }
 
-    private void Awake()
-    {
-        lineRenderer = GetComponent<LineRenderer>();
-    }
-
     private void Start()
     {
         minPointSpacingSqr = Mathf.Pow(minPointSpacing, 2);
-
-        GenerateTrack();
     }
 
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Return))
-        {
-            GenerateTrack();
-        }
-    }
-
-    private void GenerateTrack()
+    public List<Vector2> GenerateTrack()
     {
         List<Vector2> trackPoints;
 
@@ -64,21 +45,21 @@ public class TrackGenerator : MonoBehaviour
         }
         while (PointsIntersect(trackPoints));
 
-        VisualiseTrack(trackPoints);
+        return trackPoints;
     }
 
     // Generates points of a polygon with spacing and angle limitations and returns array of points
     private List<Vector2> GeneratePoints()
     {
-        int totalPoints = UnityEngine.Random.Range(minPoints, maxPoints + 1);
+        int totalPoints = Random.Range(minPoints, maxPoints + 1);
 
         Vector2[] randomPoints = new Vector2[totalPoints];
 
         // Generate an array of randomly placed points within the boundary size
         for(int i = 0; i < totalPoints; i++)
         {
-            float x = UnityEngine.Random.Range(0, boundarySize.x) - (boundarySize.x / 2);
-            float y = UnityEngine.Random.Range(0, boundarySize.y) - (boundarySize.y / 2);
+            float x = Random.Range(0, boundarySize.x) - (boundarySize.x / 2);
+            float y = Random.Range(0, boundarySize.y) - (boundarySize.y / 2);
 
             randomPoints[i] = new Vector2(x, y);
         }
@@ -200,8 +181,8 @@ public class TrackGenerator : MonoBehaviour
         {
             Vector2 midpoint = points[i] + ((points[(i + 1) % points.Count] - points[i]) / 2);
 
-            float displacementAmount = Mathf.Pow(UnityEngine.Random.Range(0f, 1f), displacementScale) * maxDisplacement;
-            Vector2 displacement = new Vector2(UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-1f, 1f)).normalized * displacementAmount;
+            float displacementAmount = Mathf.Pow(Random.Range(0f, 1f), displacementScale) * maxDisplacement;
+            Vector2 displacement = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f)).normalized * displacementAmount;
 
             extendedPoints.Add(points[i]);
             extendedPoints.Add(midpoint + displacement);
@@ -312,25 +293,5 @@ public class TrackGenerator : MonoBehaviour
         }
 
         return false;
-    }
-
-    // Spawns cubes and renders line to display the generated track
-    private void VisualiseTrack(List<Vector2> points)
-    {
-        for (int i = cubeParent.childCount - 1; i >= 0; i--)
-        {
-            GameObject.DestroyImmediate(cubeParent.GetChild(i).gameObject);
-        }
-
-        lineRenderer.positionCount = points.Count;
-
-        for (int i = 0; i < points.Count; i++)
-        {
-            Vector3 position = new Vector3(points[i].x, 0, points[i].y);
-
-            Instantiate(i % 2 == 0 ? normalCube : midpointCube, position, Quaternion.identity, cubeParent);
-
-            lineRenderer.SetPosition(i, position);
-        }
     }
 }
