@@ -3,14 +3,17 @@ using UnityEngine;
 
 public class PointGenerator : MonoBehaviour
 {
-    [Header("Map Settings")]
-    [SerializeField] private Vector2 boundarySize;
+    [Header("Track Settings")]
+    [SerializeField] private Vector2 maxSize;
+    private Vector2 pointGenerationSize;
+
+    [SerializeField] private float maxElevationChange;
 
     [SerializeField] private int minPoints;
     [SerializeField] private int maxPoints;
 
 
-    [Header("Limits")]
+    [Header("Point Limits")]
     [SerializeField] private int spacingIterations;
     [SerializeField] private int anglingIterations;
 
@@ -33,6 +36,8 @@ public class PointGenerator : MonoBehaviour
     private void Start()
     {
         minPointSpacingSqr = Mathf.Pow(minPointSpacing, 2);
+
+        pointGenerationSize = maxSize * 5 / 6;
     }
 
     // Generates points of a polygon without intersections
@@ -44,7 +49,7 @@ public class PointGenerator : MonoBehaviour
         {
             trackPoints = GeneratePoints();
         }
-        while (PointsIntersect(trackPoints));
+        while (PointsIntersect(trackPoints) || !WithinBounds(trackPoints));
 
         return trackPoints;
     }
@@ -59,10 +64,12 @@ public class PointGenerator : MonoBehaviour
         // Generate an array of randomly placed points within the boundary size
         for(int i = 0; i < totalPoints; i++)
         {
-            float x = Random.Range(0, boundarySize.x) - (boundarySize.x / 2);
-            float z = Random.Range(0, boundarySize.y) - (boundarySize.y / 2);
+            float x = Random.Range(0, pointGenerationSize.x) - (pointGenerationSize.x / 2);
+            float y = Random.Range(0, maxElevationChange) - (maxElevationChange / 2);
+            //float y = 0;
+            float z = Random.Range(0, pointGenerationSize.y) - (pointGenerationSize.y / 2);
 
-            randomPoints[i] = new Vector3(x, 0, z);
+            randomPoints[i] = new Vector3(x, y, z);
         }
 
         // Calculate the convex hull and apply spacing limitations
@@ -229,6 +236,20 @@ public class PointGenerator : MonoBehaviour
         }
 
         return points;
+    }
+
+    // Returns whether all points are within the boundary area
+    private bool WithinBounds(List<Vector3> points)
+    {
+        foreach(Vector3 point in points)
+        {
+            if(Mathf.Abs(point.y) > maxSize.y / 2 || Mathf.Abs(point.x) > maxSize.x / 2)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // Returns whether any line segments of the given points intersect

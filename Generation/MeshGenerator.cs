@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 
 public class MeshGenerator : MonoBehaviour
@@ -8,17 +7,9 @@ public class MeshGenerator : MonoBehaviour
 
     [SerializeField] private int loopsPerSegment;
 
-    public void Generate(List<Segment> spline, List<Vector3> points, MeshFilter meshFilter)
+    // Generates a mesh of the track spline and applies it to filter and collider, returns the oriented point of the track start
+    public OrientatedPoint Generate(List<Segment> spline, MeshFilter meshFilter, MeshCollider meshCollider)
     {
-        Debug.Log("Cross Section Mesh Vertices: " + crossSectionMesh.vertexCount + ", Normals: " + crossSectionMesh.normals.Length);
-
-        for(int i = 0; i < crossSectionMesh.vertices.Length; i++)
-        {
-            Debug.Log("Vertex " + i + ": " + crossSectionMesh.vertices[i]);
-            Debug.Log("Normal " + i + ": " + crossSectionMesh.normals[i]);
-        }
-
-
         Mesh mesh = new();
         mesh.name = "Generated Track";
 
@@ -81,17 +72,10 @@ public class MeshGenerator : MonoBehaviour
         mesh.RecalculateNormals();
 
         meshFilter.sharedMesh = mesh;
-    }
+        meshCollider.sharedMesh = mesh;
 
-    /*
-    // Finds the number of loops for a segment of the spline relative to the size
-    private int CalculateNumberOfLoops(Vector2 startPoint, Vector2 endPoint)
-    {
-        float distance = Vector2.Distance(startPoint, endPoint);
-
-        return (int) distance / loopStepSize;
+        return orientatedPoints[0];
     }
-    */
 
     // Determines and returns the point on a spline segment at value t along
     private Vector3 CalculateSplinePoint(Segment segment, float t)
@@ -155,7 +139,7 @@ class GeneratedMesh
     }
 }
 
-class OrientatedPoint
+public class OrientatedPoint
 {
     public Vector3 Position { get; set; }
     public Quaternion Rotation { get; set; }
