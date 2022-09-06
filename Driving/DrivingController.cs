@@ -112,7 +112,6 @@ class Wheel
     [SerializeField] private Transform wheelModel;
 
     private static readonly float steeringAngleCorrection = -0.00108f;
-   
 
     public void MotorTorque(float motorTorque)
     {

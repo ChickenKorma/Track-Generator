@@ -80,10 +80,8 @@ public class PointGenerator : MonoBehaviour
         // Generate new points inbetween the current points and apply angle limitations
         trackPoints = DisplaceMidpoints(trackPoints);
         
-        trackPoints = SpacePoints(trackPoints, spacingIterations);
-        
+        trackPoints = SpacePoints(trackPoints, spacingIterations);      
         trackPoints = AnglePoints(trackPoints);
-
         trackPoints = SpacePoints(trackPoints, spacingIterations);
 
         return trackPoints;

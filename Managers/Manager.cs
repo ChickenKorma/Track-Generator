@@ -8,18 +8,16 @@ public class Manager : MonoBehaviour
     private SplineGenerator splineGenerator;
     private MeshGenerator meshGenerator;
 
-    [SerializeField] private LineRenderer lineRenderer;
-    [SerializeField] private MeshFilter meshFilter;
-    [SerializeField] private MeshCollider meshCollider;
-
     [SerializeField] private Transform player;
 
-    private float playerYOffset;
+    [SerializeField] private float playerYOffset;
 
     [SerializeField] private CinemachineFreeLook carChaseVCam;
     [SerializeField] private CinemachineVirtualCamera trackViewVCam;
 
     private OrientatedPoint carSpawnPoint;
+
+    [SerializeField] private bool drawSpline;
 
     private void Awake()
     {
@@ -30,8 +28,6 @@ public class Manager : MonoBehaviour
 
     private void Start()
     {
-        playerYOffset = player.position.y;
-
         MakeTrack();
     }
 
@@ -40,9 +36,9 @@ public class Manager : MonoBehaviour
     {
         List<Vector3> points = pointGenerator.Generate();
         
-        List<Segment> spline = splineGenerator.Generate(points, lineRenderer, false);
+        List<Segment> spline = splineGenerator.Generate(points, drawSpline);
 
-        carSpawnPoint = meshGenerator.Generate(spline, meshFilter, meshCollider);
+        carSpawnPoint = meshGenerator.Generate(spline);
 
         SetCarAndCamera();
     }

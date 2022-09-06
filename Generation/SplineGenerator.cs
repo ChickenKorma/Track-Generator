@@ -8,14 +8,16 @@ public class SplineGenerator : MonoBehaviour
     [Range(0f, 1f)]
     [SerializeField] private float splineStep;
 
+    [SerializeField] private LineRenderer lineRenderer;
+
     // Generates and visualises the spline for the given points
-    public List<Segment> Generate(List<Vector3> points, LineRenderer lineRenderer, bool visualise = true)
+    public List<Segment> Generate(List<Vector3> points, bool visualise)
     {
         List<Segment> spline = CalculateSpline(points);
 
         if (visualise)
         {
-            VisualiseSpline(spline, lineRenderer);
+            VisualiseSpline(spline);
         }
 
         return spline;
@@ -63,7 +65,8 @@ public class SplineGenerator : MonoBehaviour
         return aVec + bVec + cVec + dVec;
     }
 
-    private void VisualiseSpline(List<Segment> spline, LineRenderer lineRenderer)
+    // Determines render points every splineStep along the spline segments and sets these in the line renderer
+    private void VisualiseSpline(List<Segment> spline)
     {
         List<Vector3> renderPoints = new();
 
@@ -73,7 +76,7 @@ public class SplineGenerator : MonoBehaviour
             {
                 Vector3 point = CalculateSplinePoint(segment, t);
 
-                renderPoints.Add(new Vector3(point.x, 0, point.z));
+                renderPoints.Add(new Vector3(point.x, point.y + 1.0f, point.z));
             }
         }
 
