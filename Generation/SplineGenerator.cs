@@ -10,12 +10,14 @@ public class SplineGenerator : MonoBehaviour
 
     [SerializeField] private LineRenderer lineRenderer;
 
+    [SerializeField] private bool drawSpline;
+
     // Generates and visualises the spline for the given points
-    public List<Segment> Generate(List<Vector3> points, bool visualise)
+    public List<Segment> Generate(List<Vector3> points)
     {
         List<Segment> spline = CalculateSpline(points);
 
-        if (visualise)
+        if (drawSpline)
         {
             VisualiseSpline(spline);
         }
@@ -54,17 +56,6 @@ public class SplineGenerator : MonoBehaviour
         return new Segment(a, b, c, d);
     }
 
-    // Determines and returns the point on a spline segment at value t along
-    private Vector3 CalculateSplinePoint(Segment segment, float t)
-    {
-        Vector3 aVec = segment.A * Mathf.Pow(t, 3);
-        Vector3 bVec = segment.B * Mathf.Pow(t, 2);
-        Vector3 cVec = segment.C * t;
-        Vector3 dVec = segment.D;
-
-        return aVec + bVec + cVec + dVec;
-    }
-
     // Determines render points every splineStep along the spline segments and sets these in the line renderer
     private void VisualiseSpline(List<Segment> spline)
     {
@@ -74,7 +65,7 @@ public class SplineGenerator : MonoBehaviour
         {
             for(float t = 0; t < 1; t += splineStep)
             {
-                Vector3 point = CalculateSplinePoint(segment, t);
+                Vector3 point = segment.CalculatePoint(t);
 
                 renderPoints.Add(new Vector3(point.x, point.y + 1.0f, point.z));
             }
@@ -92,16 +83,22 @@ public class Segment
     private Vector3 c;
     private Vector3 d;
 
-    public Vector3 A { get { return a; } }
-    public Vector3 B { get { return b; } }
-    public Vector3 C { get { return c; } }
-    public Vector3 D { get { return d; } }
-
     public Segment(Vector3 a, Vector3 b, Vector3 c, Vector3 d)
     {
         this.a = a;
         this.b = b;
         this.c = c;
         this.d = d;
+    }
+
+    // Calculates and returns the point on this spline segment at value t along
+    public Vector3 CalculatePoint(float t)
+    {
+        Vector3 aVec = a * Mathf.Pow(t, 3);
+        Vector3 bVec = b * Mathf.Pow(t, 2);
+        Vector3 cVec = c * t;
+        Vector3 dVec = d;
+
+        return aVec + bVec + cVec + dVec;
     }
 }

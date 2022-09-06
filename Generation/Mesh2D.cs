@@ -14,6 +14,22 @@ public class Mesh2D : ScriptableObject
     public int VertexCount => vertices.Length;
 
     public int LineCount => lineIndices.Length;
+
+    // Calculates the u-span of the 2D mesh in world space
+    public float CalculateUSpanWorld()
+    {
+        float span = 0f;
+
+        for(int line = 0; line < LineCount; line += 2)
+        {
+            Vector2 startPoint = vertices[lineIndices[line]].Position;
+            Vector2 endPoint = vertices[lineIndices[line + 1]].Position;
+
+            span += Vector2.Distance(startPoint, endPoint);
+        }
+
+        return span;
+    }
 }
 
 [System.Serializable]

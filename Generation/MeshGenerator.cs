@@ -15,6 +15,8 @@ public class MeshGenerator : MonoBehaviour
     private Mesh trackVisualMesh;
     private Mesh trackColliderMesh;
 
+    private float uSpan;
+
     private void Awake()
     {
         trackVisualMesh = new();
@@ -24,13 +26,15 @@ public class MeshGenerator : MonoBehaviour
         trackColliderMesh = new();
         trackColliderMesh.name = "Track Collider";
         meshCollider.sharedMesh = trackColliderMesh;
+
+        uSpan = crossSectionMesh.CalculateUSpanWorld();
     }
 
     // Generates and sets a visual mesh and collider mesh (with a lower vertex count for physics performance), returns the start point of the track
     public OrientatedPoint Generate(List<Segment> spline)
     {
-        OrientatedPoint trackStartPoint = GenerateTrackMesh(trackVisualMesh, spline, loopsPerVisualSegment);
-        GenerateTrackMesh(trackColliderMesh, spline, loopsPerColliderSegment);
+        OrientatedPoint trackStartPoint = GenerateTrackMesh(trackVisualMesh, true, spline, loopsPerVisualSegment);
+        GenerateTrackMesh(trackColliderMesh, false, spline, loopsPerColliderSegment);
         
         // Needs to be set each time for physics engine to update it
         meshCollider.sharedMesh = trackColliderMesh;
@@ -39,16 +43,23 @@ public class MeshGenerator : MonoBehaviour
     }
 
     // Generates a container mesh of the given spline and applies it to the given mesh, returns the start orientated point of the spline
-    private OrientatedPoint GenerateTrackMesh(Mesh mesh, List<Segment> spline, int loopsPerSegment)
+    private OrientatedPoint GenerateTrackMesh(Mesh mesh, bool isVisual, List<Segment> spline, int loopsPerSegment)
     {
         MeshContainer meshContainer = new();
 
         OrientatedPoint startPoint = null;
 
+        float segmentLength = 0f;
+
         // Iterate through each spline segment and number of loops for each segment
         for (int segment = 0; segment < spline.Count; segment++)
         {
-            for(int loop = 0; loop < loopsPerSegment; loop++)
+            if (isVisual)
+            {
+                segmentLength = ApproxSegmentLength(spline[segment], loopsPerSegment * 2);
+            }
+
+            for (int loop = 0; loop < loopsPerSegment; loop++)
             {
                 // Calculate distance along segment for this loop and find its orientation
                 float t = loop / (loopsPerSegment - 1f);
@@ -67,8 +78,14 @@ public class MeshGenerator : MonoBehaviour
                     Vertex vertex = crossSectionMesh.Vertices[j];
 
                     meshContainer.Vertices.Add(orientatedPoint.LocalToWorldPosition(vertex.Position));
-                    meshContainer.Normals.Add(orientatedPoint.LocalToWorldVector(vertex.Normal));
-                    meshContainer.Uvs.Add(new Vector2(vertex.U, t));
+
+                    if (isVisual)
+                    {
+                        meshContainer.Normals.Add(orientatedPoint.LocalToWorldVector(vertex.Normal));
+
+                        // Adjust the v coordinates with the length of this segment
+                        meshContainer.Uvs.Add(new Vector2(vertex.U, t * segmentLength / uSpan));
+                    }
                 }
             }
         }
@@ -118,6 +135,29 @@ public class MeshGenerator : MonoBehaviour
 
         return startPoint;
     }
+
+    // Calculates numerically the length of the given segment using steps number of iterations
+    private float ApproxSegmentLength(Segment segment, int steps)
+    {
+        Vector3[] points = new Vector3[steps];
+
+        for(int step = 0; step < steps; step++)
+        {
+            points[step] = segment.CalculatePoint(step / (steps - 1));
+        }
+
+        float length = 0;
+
+        for(int step = 0; step < steps - 1; step++)
+        {
+            Vector3 currentPoint = points[step];
+            Vector3 nextPoint = points[step + 1];
+
+            length += Vector3.Distance(currentPoint, nextPoint);
+        }
+
+        return length;
+    }
 }
 
 class MeshContainer
@@ -150,25 +190,25 @@ public class OrientatedPoint
         float nextT = t + tStep;
 
         Vector3 previousPoint;
-        Vector3 currentPoint = CalculateSplinePoint(currentSegment, t);
+        Vector3 currentPoint = currentSegment.CalculatePoint(t);
         Vector3 nextPoint;
 
         if(previousT < 0.0f)
         {
-            previousPoint = CalculateSplinePoint(previousSegment, previousT + 1.0f);
+            previousPoint = previousSegment.CalculatePoint(previousT + 1.0f);
         }
         else
         {
-            previousPoint = CalculateSplinePoint(currentSegment, previousT);
+            previousPoint = currentSegment.CalculatePoint(previousT);
         }
 
         if(nextT > 1.0f)
         {
-            nextPoint = CalculateSplinePoint(nextSegment, nextT - 1.0f);
+            nextPoint = nextSegment.CalculatePoint(nextT - 1.0f);
         }
         else
         {
-            nextPoint = CalculateSplinePoint(currentSegment, nextT);
+            nextPoint = currentSegment.CalculatePoint(nextT);
         }
 
         Vector3 previousDirection = currentPoint - previousPoint;
@@ -179,17 +219,6 @@ public class OrientatedPoint
 
         Position = currentPoint;
         Rotation = rotation;
-    }
-
-    // Calculates and returns the point on the spline segment at value t along
-    private Vector3 CalculateSplinePoint(Segment segment, float t)
-    {
-        Vector3 aVec = segment.A * Mathf.Pow(t, 3);
-        Vector3 bVec = segment.B * Mathf.Pow(t, 2);
-        Vector3 cVec = segment.C * t;
-        Vector3 dVec = segment.D;
-
-        return aVec + bVec + cVec + dVec;
     }
 
     // Transforms local position to world space

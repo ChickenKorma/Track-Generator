@@ -17,8 +17,6 @@ public class Manager : MonoBehaviour
 
     private OrientatedPoint carSpawnPoint;
 
-    [SerializeField] private bool drawSpline;
-
     private void Awake()
     {
         pointGenerator = GetComponent<PointGenerator>();
@@ -34,11 +32,15 @@ public class Manager : MonoBehaviour
     // Generates and visualises a new track
     public void MakeTrack()
     {
+        float startTime = Time.realtimeSinceStartup;
+
         List<Vector3> points = pointGenerator.Generate();
         
-        List<Segment> spline = splineGenerator.Generate(points, drawSpline);
+        List<Segment> spline = splineGenerator.Generate(points);
 
         carSpawnPoint = meshGenerator.Generate(spline);
+
+        Debug.Log("Generation Time: " + ((Time.realtimeSinceStartup - startTime) * 1000f) + " milliseconds");
 
         SetCarAndCamera();
     }
