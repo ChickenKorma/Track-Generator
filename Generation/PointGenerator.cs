@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Drawing;
 using UnityEngine;
 
 public class PointGenerator : MonoBehaviour
@@ -7,7 +8,9 @@ public class PointGenerator : MonoBehaviour
     [SerializeField] private Vector2 maxSize;
     private Vector2 pointGenerationSize;
 
-    [SerializeField] private float maxElevationChange;
+    [SerializeField] private float elevationScale;
+    [SerializeField] private float noiseDetail;
+    private int elevationSeed;
 
     [SerializeField] private int minPoints;
     [SerializeField] private int maxPoints;
@@ -38,6 +41,8 @@ public class PointGenerator : MonoBehaviour
         minPointSpacingSqr = Mathf.Pow(minPointSpacing, 2);
 
         pointGenerationSize = maxSize * 5 / 6;
+
+        elevationSeed = Random.Range(0, 1000);
     }
 
     // Generates points of a polygon without intersections
@@ -65,11 +70,9 @@ public class PointGenerator : MonoBehaviour
         for(int i = 0; i < totalPoints; i++)
         {
             float x = Random.Range(0, pointGenerationSize.x) - (pointGenerationSize.x / 2);
-            float y = Random.Range(0, maxElevationChange) - (maxElevationChange / 2);
-            //float y = 0;
             float z = Random.Range(0, pointGenerationSize.y) - (pointGenerationSize.y / 2);
 
-            randomPoints[i] = new Vector3(x, y, z);
+            randomPoints[i] = new Vector3(x, 0, z);
         }
 
         // Calculate the convex hull and apply spacing limitations
@@ -83,6 +86,9 @@ public class PointGenerator : MonoBehaviour
         trackPoints = SpacePoints(trackPoints, spacingIterations);      
         trackPoints = AnglePoints(trackPoints);
         trackPoints = SpacePoints(trackPoints, spacingIterations);
+
+        // Add height displacement
+        trackPoints = ElevatePoints(trackPoints);
 
         return trackPoints;
     }
@@ -232,6 +238,25 @@ public class PointGenerator : MonoBehaviour
 
             points = SpacePoints(points, 1);
         }
+
+        return points;
+    }
+
+    // Determines new y coordinate for each point in points list by calculating value on perlin noise map
+    private List<Vector3> ElevatePoints(List<Vector3> points)
+    {
+        for(int p = 0; p < points.Count; p++)
+        {
+            float xCoord = points[p].x / maxSize.x * noiseDetail + elevationSeed;
+            float yCoord = points[p].z / maxSize.y * noiseDetail + elevationSeed;
+
+            float height = (Mathf.PerlinNoise(xCoord, yCoord) - 0.5f) * elevationScale;
+
+            Vector3 newPos = new Vector3(points[p].x, height, points[p].z);
+            points[p] = newPos;
+        }
+
+        elevationSeed += 1000;
 
         return points;
     }

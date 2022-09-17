@@ -5,6 +5,8 @@ public class MeshGenerator : MonoBehaviour
 {
     [SerializeField] private MeshFilter meshFilter;
 
+    [SerializeField] private MeshRenderer meshRenderer;
+
     [SerializeField] private MeshCollider meshCollider;
 
     [SerializeField] private Mesh2D crossSectionMesh;
@@ -129,9 +131,15 @@ public class MeshGenerator : MonoBehaviour
         mesh.Clear();
 
         mesh.SetVertices(meshContainer.Vertices);
-        mesh.SetNormals(meshContainer.Normals);
         mesh.SetTriangles(meshContainer.Triangles, 0);
-        mesh.SetUVs(0, meshContainer.Uvs);
+
+        if (isVisual)
+        {
+            mesh.SetNormals(meshContainer.Normals);
+            mesh.SetUVs(0, meshContainer.Uvs);
+
+            meshRenderer.material = crossSectionMesh.Material;
+        }
 
         return startPoint;
     }
@@ -157,6 +165,14 @@ public class MeshGenerator : MonoBehaviour
         }
 
         return length;
+    }
+
+    // Changes the cross sectional mesh used for generated the track mesh and recalculates the uSpan
+    public void SetCrossSection(Mesh2D crossSectionMesh)
+    {
+        this.crossSectionMesh = crossSectionMesh;
+
+        uSpan = crossSectionMesh.CalculateUSpanWorld();
     }
 }
 

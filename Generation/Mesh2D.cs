@@ -3,6 +3,10 @@ using UnityEngine;
 [CreateAssetMenu]
 public class Mesh2D : ScriptableObject
 {
+    [SerializeField] private Material material;
+
+    public Material Material { get { return material; } }
+
     [SerializeField] private Vertex[] vertices;
 
     public Vertex[] Vertices { get { return vertices; } }
@@ -39,7 +43,7 @@ public class Vertex
     [SerializeField] private Vector2 normal;
 
     public Vector2 Position { get { return position; } }
-    public Vector2 Normal { get { return normal; } }
+    public Vector2 Normal { get { return normal.normalized; } }
 
     [SerializeField] private float u;
 
