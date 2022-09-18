@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Drawing;
 using UnityEngine;
 
 public class PointGenerator : MonoBehaviour
@@ -7,10 +6,6 @@ public class PointGenerator : MonoBehaviour
     [Header("Track Settings")]
     [SerializeField] private Vector2 maxSize;
     private Vector2 pointGenerationSize;
-
-    [SerializeField] private float elevationScale;
-    [SerializeField] private float noiseDetail;
-    private int elevationSeed;
 
     [SerializeField] private int minPoints;
     [SerializeField] private int maxPoints;
@@ -41,18 +36,16 @@ public class PointGenerator : MonoBehaviour
         minPointSpacingSqr = Mathf.Pow(minPointSpacing, 2);
 
         pointGenerationSize = maxSize * 5 / 6;
-
-        elevationSeed = Random.Range(0, 1000);
     }
 
-    // Generates points of a polygon without intersections
+    // Generates points of the track polygon without intersections and the set of grid points for the matching terrain
     public List<Vector3> Generate()
     {
         List<Vector3> trackPoints;
-
+        
         do
         {
-            trackPoints = GeneratePoints();
+            trackPoints = GenerateTrackPoints();
         }
         while (PointsIntersect(trackPoints) || !WithinBounds(trackPoints));
 
@@ -60,7 +53,7 @@ public class PointGenerator : MonoBehaviour
     }
 
     // Generates points of a polygon with spacing and angle limitations and returns array of points
-    private List<Vector3> GeneratePoints()
+    private List<Vector3> GenerateTrackPoints()
     {
         int totalPoints = Random.Range(minPoints, maxPoints + 1);
 
@@ -86,9 +79,6 @@ public class PointGenerator : MonoBehaviour
         trackPoints = SpacePoints(trackPoints, spacingIterations);      
         trackPoints = AnglePoints(trackPoints);
         trackPoints = SpacePoints(trackPoints, spacingIterations);
-
-        // Add height displacement
-        trackPoints = ElevatePoints(trackPoints);
 
         return trackPoints;
     }
@@ -238,25 +228,6 @@ public class PointGenerator : MonoBehaviour
 
             points = SpacePoints(points, 1);
         }
-
-        return points;
-    }
-
-    // Determines new y coordinate for each point in points list by calculating value on perlin noise map
-    private List<Vector3> ElevatePoints(List<Vector3> points)
-    {
-        for(int p = 0; p < points.Count; p++)
-        {
-            float xCoord = points[p].x / maxSize.x * noiseDetail + elevationSeed;
-            float yCoord = points[p].z / maxSize.y * noiseDetail + elevationSeed;
-
-            float height = (Mathf.PerlinNoise(xCoord, yCoord) - 0.5f) * elevationScale;
-
-            Vector3 newPos = new Vector3(points[p].x, height, points[p].z);
-            points[p] = newPos;
-        }
-
-        elevationSeed += 1000;
 
         return points;
     }

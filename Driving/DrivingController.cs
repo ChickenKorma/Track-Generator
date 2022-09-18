@@ -17,6 +17,10 @@ public class DrivingController : MonoBehaviour
 
     [SerializeField] private Transform coM;
 
+    private bool handbrake;
+
+    public bool Handbrake { set { handbrake = value; } }
+
     private void Awake()
     {
         if(Instance != null)
@@ -49,7 +53,14 @@ public class DrivingController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        UpdateCar(playerInputActions.Game.Throttle.ReadValue<float>(), playerInputActions.Game.Steering.ReadValue<float>());
+        if (handbrake)
+        {
+            UpdateCar(0, 0, 100);
+        }
+        else
+        {
+            UpdateCar(playerInputActions.Game.Throttle.ReadValue<float>(), playerInputActions.Game.Steering.ReadValue<float>(), 0);
+        }
     }
 
     public void UpdateTransform(Vector3 position, Quaternion rotation)
@@ -60,7 +71,7 @@ public class DrivingController : MonoBehaviour
         rb.velocity = Vector3.zero;
     }
 
-    private void UpdateCar(float throttleInput, float steeringInput)
+    private void UpdateCar(float throttleInput, float steeringInput, float brakeTorque)
     {
         float motorTorque = maxMotorTorque * throttleInput;
 
@@ -68,7 +79,7 @@ public class DrivingController : MonoBehaviour
 
         foreach(Axel axel in axels)
         {
-            axel.Update(motorTorque, steeringAngle);
+            axel.Update(motorTorque, steeringAngle, brakeTorque);
         }
     }
 }
@@ -81,7 +92,7 @@ class Axel
     [SerializeField] private bool motor;
     [SerializeField] private bool steering;
 
-    public void Update(float motorTorque, float steeringAngle)
+    public void Update(float motorTorque, float steeringAngle, float brakeTorque)
     {
         foreach(Wheel wheel in wheels)
         {
@@ -94,6 +105,8 @@ class Axel
             {
                 wheel.SteerAngle(steeringAngle);
             }
+
+            wheel.BrakeTorque(brakeTorque);
 
             wheel.UpdateModel();
         }
@@ -117,6 +130,11 @@ class Wheel
     public void SteerAngle(float steerAngle)
     {
         wheelCollider.steerAngle = steerAngle + (wheelCollider.rpm * steeringAngleCorrection) ;
+    }
+
+    public void BrakeTorque(float brakeTorque)
+    {
+        wheelCollider.brakeTorque = brakeTorque;
     }
 
     public void UpdateModel()

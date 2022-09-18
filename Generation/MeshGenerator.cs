@@ -3,49 +3,93 @@ using UnityEngine;
 
 public class MeshGenerator : MonoBehaviour
 {
-    [SerializeField] private MeshFilter meshFilter;
+    [Header("Components")]
+    [SerializeField] private MeshFilter trackMeshFilter;
+    [SerializeField] private MeshFilter terrainMeshFilter;
 
-    [SerializeField] private MeshRenderer meshRenderer;
+    [SerializeField] private MeshRenderer trackMeshRenderer;
 
-    [SerializeField] private MeshCollider meshCollider;
+    [SerializeField] private MeshCollider trackMeshCollider;
+    [SerializeField] private MeshCollider terrainMeshCollider;
 
+    [Header("Noise Settings")]
+    [SerializeField] private float heightScale;
+    [SerializeField] private float noiseDetail;
+
+    [SerializeField] private int seedChange;
+    private int seed;
+
+    [Header("Track Settings")]
     [SerializeField] private Mesh2D crossSectionMesh;
 
     [SerializeField] private int loopsPerVisualSegment;
     [SerializeField] private int loopsPerColliderSegment;
 
+
+    [Header("Terrain Settings")]
+    [SerializeField] private float terrainSize;
+    [SerializeField] private int visualTerrainSegments;
+    [SerializeField] private int colliderTerrainSegments;
+
+    [SerializeField] private float terrainYOffset;
+    [SerializeField] private float terrainUVScale;
+
     private Mesh trackVisualMesh;
     private Mesh trackColliderMesh;
+    private Mesh terrainVisualMesh;
+    private Mesh terrainColliderMesh;
 
     private float uSpan;
 
     private void Awake()
     {
+        // Initialise meshes and set them
         trackVisualMesh = new();
         trackVisualMesh.name = "Track Visual";
-        meshFilter.sharedMesh = trackVisualMesh;
+        trackMeshFilter.sharedMesh = trackVisualMesh;
 
         trackColliderMesh = new();
         trackColliderMesh.name = "Track Collider";
-        meshCollider.sharedMesh = trackColliderMesh;
+        trackMeshCollider.sharedMesh = trackColliderMesh;
+
+        terrainVisualMesh = new();
+        terrainVisualMesh.name = "Terrain Visual";
+        terrainMeshFilter.sharedMesh = terrainVisualMesh;
+
+        terrainColliderMesh = new();
+        terrainColliderMesh.name = "Terrain Collider";
+        terrainMeshCollider.sharedMesh = terrainColliderMesh;
 
         uSpan = crossSectionMesh.CalculateUSpanWorld();
+
+        seed = Random.Range(0, seedChange);
     }
 
     // Generates and sets a visual mesh and collider mesh (with a lower vertex count for physics performance), returns the start point of the track
     public OrientatedPoint Generate(List<Segment> spline)
     {
+        // Generate track meshes
         OrientatedPoint trackStartPoint = GenerateTrackMesh(trackVisualMesh, true, spline, loopsPerVisualSegment);
+        trackMeshRenderer.material = crossSectionMesh.Material;
+
         GenerateTrackMesh(trackColliderMesh, false, spline, loopsPerColliderSegment);
+
+        // Generate terrain meshes
+        GenerateTerrainMesh(terrainVisualMesh, true, visualTerrainSegments);
+        GenerateTerrainMesh(terrainColliderMesh, false, colliderTerrainSegments);
         
-        // Needs to be set each time for physics engine to update it
-        meshCollider.sharedMesh = trackColliderMesh;
+        // Re-set the mesh colliders (otherwise physics does not update?)
+        trackMeshCollider.sharedMesh = trackColliderMesh;
+        terrainMeshCollider.sharedMesh = terrainColliderMesh;
+
+        // Increment seed ready for next generation
+        seed += seedChange;
 
         return trackStartPoint;
     }
 
     // Generates a container mesh of the given spline and applies it to the given mesh, returns the start orientated point of the spline
-    private OrientatedPoint GenerateTrackMesh(Mesh mesh, bool isVisual, List<Segment> spline, int loopsPerSegment)
+    private OrientatedPoint GenerateTrackMesh(Mesh trackMesh, bool isVisual, List<Segment> spline, int loopsPerSegment)
     {
         MeshContainer meshContainer = new();
 
@@ -63,15 +107,18 @@ public class MeshGenerator : MonoBehaviour
 
             for (int loop = 0; loop < loopsPerSegment; loop++)
             {
-                // Calculate distance along segment for this loop and find its orientation
+                // Calculate distance along segment for this loop, find its orientation and respective height on nosie map
                 float t = loop / (loopsPerSegment - 1f);
 
                 OrientatedPoint orientatedPoint = new OrientatedPoint(spline[segment > 0 ? (segment - 1) : (spline.Count - 1)], spline[segment], spline[(segment + 1) % spline.Count], t);
 
-                if(segment == 0 && loop == 0)
+                Vector3 offset = new Vector3(0, CalculateHeight(orientatedPoint.Position), 0);
+
+                if (segment == 0 && loop == 0)
                 {
-                    startPoint = orientatedPoint;
-                }    
+                    Vector3 position = orientatedPoint.Position + offset;
+                    startPoint = new OrientatedPoint(position, orientatedPoint.Rotation);
+                }
 
                 // Iterate through each vertex on the cross section and add it to our mesh container, transforming the local space to the world space
                 // with the orientation of this spline point
@@ -79,7 +126,7 @@ public class MeshGenerator : MonoBehaviour
                 {
                     Vertex vertex = crossSectionMesh.Vertices[j];
 
-                    meshContainer.Vertices.Add(orientatedPoint.LocalToWorldPosition(vertex.Position));
+                    meshContainer.Vertices.Add(orientatedPoint.LocalToWorldPosition(vertex.Position) + offset);
 
                     if (isVisual)
                     {
@@ -128,17 +175,15 @@ public class MeshGenerator : MonoBehaviour
         }
 
         // Clear any data from the mesh and then set all values
-        mesh.Clear();
+        trackMesh.Clear();
 
-        mesh.SetVertices(meshContainer.Vertices);
-        mesh.SetTriangles(meshContainer.Triangles, 0);
+        trackMesh.SetVertices(meshContainer.Vertices);
+        trackMesh.SetTriangles(meshContainer.Triangles, 0);
 
         if (isVisual)
         {
-            mesh.SetNormals(meshContainer.Normals);
-            mesh.SetUVs(0, meshContainer.Uvs);
-
-            meshRenderer.material = crossSectionMesh.Material;
+            trackMesh.SetNormals(meshContainer.Normals);
+            trackMesh.SetUVs(0, meshContainer.Uvs);
         }
 
         return startPoint;
@@ -165,6 +210,84 @@ public class MeshGenerator : MonoBehaviour
         }
 
         return length;
+    }
+
+    // Generates a container mesh of a grid of points, elevates each point based on perlin noise map and applies this to the given mesh
+    private void GenerateTerrainMesh(Mesh terrainMesh, bool isVisual, int terrainSegments)
+    {
+        MeshContainer meshContainer = new();
+
+        float xSpacing = terrainSize / terrainSegments;
+        float zSpacing = terrainSize / terrainSegments;
+
+        // Iterate through each point of the grid, calculating coordinate in each axis
+        for(int x = 0; x < terrainSegments + 1; x++)
+        {
+            float xPos = (x * xSpacing) - (terrainSize / 2);
+
+            for(int z = 0; z < terrainSegments + 1; z++)
+            {
+                float zPos = (z * zSpacing) - (terrainSize / 2);
+                float yPos = CalculateHeight(new Vector3(xPos, 0, zPos)) + terrainYOffset;
+
+                meshContainer.Vertices.Add(new Vector3(xPos, yPos, zPos));
+
+                if (isVisual)
+                {
+                    meshContainer.Uvs.Add(new Vector2((float) x / terrainSegments, (float) z / terrainSegments) * terrainUVScale);
+                }
+            }
+        }
+
+        // Iterate again through each point of the grid
+        for(int x = 0; x < terrainSegments; x++)
+        {
+            // Find the root index of this row and the next row of teh grid
+            int rootIndex = x * (terrainSegments + 1);
+            int nextRootIndex = (x + 1) * (terrainSegments + 1);
+
+            for(int z = 0; z < terrainSegments; z++)
+            {
+                // Find the indices of the line segment in this row and the next row
+                int start1 = rootIndex + z;
+                int end1 = rootIndex + z + 1;
+
+                int start2 = nextRootIndex + z;
+                int end2 = nextRootIndex + z + 1;
+
+                // Complete quad between teh four points with two triangles
+                meshContainer.Triangles.Add(start1);
+                meshContainer.Triangles.Add(end2);
+                meshContainer.Triangles.Add(start2);
+
+                meshContainer.Triangles.Add(start1);
+                meshContainer.Triangles.Add(end1);
+                meshContainer.Triangles.Add(end2);
+            }
+        }
+
+        // Clear any data from the mesh and set the new data from mesh container
+        terrainMesh.Clear();
+
+        terrainMesh.SetVertices(meshContainer.Vertices);
+        terrainMesh.SetTriangles(meshContainer.Triangles, 0);       
+
+        if (isVisual)
+        {
+            terrainMesh.SetUVs(0, meshContainer.Uvs);
+            terrainMesh.RecalculateNormals();
+        }
+    }
+
+    // Calculates height at the given points coordinate on perlin noise map
+    private float CalculateHeight(Vector3 point)
+    {
+        float xCoord = point.x / 60 * noiseDetail + seed;
+        float yCoord = point.z / 60 * noiseDetail + seed;
+
+        float height = (Mathf.PerlinNoise(xCoord, yCoord) - 0.5f) * heightScale;
+
+        return height;
     }
 
     // Changes the cross sectional mesh used for generated the track mesh and recalculates the uSpan
@@ -235,6 +358,12 @@ public class OrientatedPoint
 
         Position = currentPoint;
         Rotation = rotation;
+    }
+
+    public OrientatedPoint(Vector3 position, Quaternion rotation)
+    {
+        this.Position = position;
+        this.Rotation = rotation;
     }
 
     // Transforms local position to world space

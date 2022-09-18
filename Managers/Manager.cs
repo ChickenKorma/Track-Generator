@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 using Cinemachine;
 
 public class Manager : MonoBehaviour
@@ -14,6 +15,8 @@ public class Manager : MonoBehaviour
 
     [SerializeField] private CinemachineFreeLook carChaseVCam;
     [SerializeField] private CinemachineVirtualCamera trackViewVCam;
+
+    [SerializeField] private TMP_Text handbrakeText;
 
     private OrientatedPoint carSpawnPoint;
 
@@ -34,9 +37,9 @@ public class Manager : MonoBehaviour
     {
         float startTime = Time.realtimeSinceStartup;
 
-        List<Vector3> points = pointGenerator.Generate();
+        List<Vector3> trackPoints = pointGenerator.Generate();
         
-        List<Segment> spline = splineGenerator.Generate(points);
+        List<Segment> spline = splineGenerator.Generate(trackPoints);
 
         carSpawnPoint = meshGenerator.Generate(spline);
 
@@ -52,6 +55,9 @@ public class Manager : MonoBehaviour
 
         carChaseVCam.Priority = 0;
         trackViewVCam.Priority = 1;
+
+        DrivingController.Instance.Handbrake = true;
+        handbrakeText.text = "Handbrake On";
     }
 
     // Switches to the car chase cam
@@ -59,6 +65,9 @@ public class Manager : MonoBehaviour
     {
         carChaseVCam.Priority = 1;
         trackViewVCam.Priority = 0;
+
+        DrivingController.Instance.Handbrake = false;
+        handbrakeText.text = "Handbrake Off";
     }
 
     // Sets the car transform and camera rotation 
@@ -66,6 +75,15 @@ public class Manager : MonoBehaviour
     {
         SetCarTransform();
         SetCameraRotation();
+
+        if(carChaseVCam.Priority == 1)
+        {
+            DrivingController.Instance.Handbrake = false;
+        }
+        else
+        {
+            DrivingController.Instance.Handbrake = true;
+        }
     }
 
     private void SetCarTransform()
