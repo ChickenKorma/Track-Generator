@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class SplineGenerator : MonoBehaviour
 {
+    public static SplineGenerator Instance;
+
     [Range(0f, 1f)]
     [SerializeField] private float splineAlpha;
     [Range(0f, 1f)]
@@ -11,6 +13,18 @@ public class SplineGenerator : MonoBehaviour
     [SerializeField] private LineRenderer lineRenderer;
 
     [SerializeField] private bool drawSpline;
+
+    private void Awake()
+    {
+        if (Instance != null)
+        {
+            Destroy(this);
+        }
+        else
+        {
+            Instance = this;
+        }
+    }
 
     // Generates and visualises the spline for the given points
     public List<Segment> Generate(List<Vector3> points)

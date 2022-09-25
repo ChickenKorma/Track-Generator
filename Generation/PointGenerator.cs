@@ -3,12 +3,15 @@ using UnityEngine;
 
 public class PointGenerator : MonoBehaviour
 {
+    public static PointGenerator Instance;
+
     [Header("Track Settings")]
     [SerializeField] private Vector2 maxSize;
     private Vector2 pointGenerationSize;
 
-    [SerializeField] private int minPoints;
-    [SerializeField] private int maxPoints;
+    [SerializeField] private int initialPoints;
+
+    public int InitialPoints { get { return initialPoints; } set { initialPoints = value; } }
 
 
     [Header("Point Limits")]
@@ -24,6 +27,8 @@ public class PointGenerator : MonoBehaviour
     [SerializeField] private float maxDisplacement;
     [SerializeField] private float displacementScale;
 
+    public float MaxDisplacement { get { return maxDisplacement; } set { maxDisplacement = value; } }
+
     private enum Orientation
     {
         Collinear,
@@ -31,8 +36,17 @@ public class PointGenerator : MonoBehaviour
         Anticlockwise
     }
 
-    private void Start()
+    private void Awake()
     {
+        if(Instance != null)
+        {
+            Destroy(this);
+        }
+        else
+        {
+            Instance = this;
+        }
+
         minPointSpacingSqr = Mathf.Pow(minPointSpacing, 2);
 
         pointGenerationSize = maxSize * 5 / 6;
@@ -55,12 +69,10 @@ public class PointGenerator : MonoBehaviour
     // Generates points of a polygon with spacing and angle limitations and returns array of points
     private List<Vector3> GenerateTrackPoints()
     {
-        int totalPoints = Random.Range(minPoints, maxPoints + 1);
-
-        Vector3[] randomPoints = new Vector3[totalPoints];
+        Vector3[] randomPoints = new Vector3[initialPoints];
 
         // Generate an array of randomly placed points within the boundary size
-        for(int i = 0; i < totalPoints; i++)
+        for(int i = 0; i < initialPoints; i++)
         {
             float x = Random.Range(0, pointGenerationSize.x) - (pointGenerationSize.x / 2);
             float z = Random.Range(0, pointGenerationSize.y) - (pointGenerationSize.y / 2);

@@ -9,17 +9,18 @@ public class DrivingController : MonoBehaviour
     [SerializeField] private float maxMotorTorque;
     [SerializeField] private float maxSteeringAngle;
 
-    private Rigidbody rb;
+    private float throttleInput;
+    private float steerInput;
 
-    private PlayerInputActions playerInputActions;
+    private Rigidbody rb;
 
     [SerializeField] private List<Axel> axels;
 
     [SerializeField] private Transform coM;
 
-    private bool handbrake;
+    private bool handbrake = true;
 
-    public bool Handbrake { set { handbrake = value; } }
+    public bool Handbrake { get { return handbrake; } set { handbrake = value; } }
 
     private void Awake()
     {
@@ -42,24 +43,36 @@ public class DrivingController : MonoBehaviour
 
     private void OnEnable()
     {
-        playerInputActions = new();
-        playerInputActions.Enable();
+        InputManager.throttleEvent += ThrottleInput;
+        InputManager.steerEvent += SteerInput;
+        InputManager.handbrakeEvent += HandbrakeToggle;
     }
 
     private void OnDisable()
     {
-        playerInputActions.Disable();
+        InputManager.throttleEvent -= ThrottleInput;
+        InputManager.steerEvent -= SteerInput;
+        InputManager.handbrakeEvent -= HandbrakeToggle;
     }
 
     private void FixedUpdate()
     {
         if (handbrake)
         {
-            UpdateCar(0, 0, 100);
+            if(Mathf.Abs(throttleInput) > 0.01f)
+            {
+                handbrake = false;
+
+                UpdateCar(throttleInput, steerInput, 0);
+            }
+            else
+            {
+                UpdateCar(0, 0, 100);
+            }
         }
         else
         {
-            UpdateCar(playerInputActions.Game.Throttle.ReadValue<float>(), playerInputActions.Game.Steering.ReadValue<float>(), 0);
+            UpdateCar(throttleInput, steerInput, 0);
         }
     }
 
@@ -82,6 +95,12 @@ public class DrivingController : MonoBehaviour
             axel.Update(motorTorque, steeringAngle, brakeTorque);
         }
     }
+
+    private void ThrottleInput(float input) => throttleInput = input;
+
+    private void SteerInput(float input) => steerInput = input;
+
+    private void HandbrakeToggle() => handbrake = !handbrake;
 }
 
 [System.Serializable]

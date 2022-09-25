@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class MeshGenerator : MonoBehaviour
 {
+    public static MeshGenerator Instance;
+
     [Header("Components")]
     [SerializeField] private MeshFilter trackMeshFilter;
     [SerializeField] private MeshFilter terrainMeshFilter;
@@ -16,14 +18,23 @@ public class MeshGenerator : MonoBehaviour
     [SerializeField] private float heightScale;
     [SerializeField] private float noiseDetail;
 
+    public float HeightScale { get { return heightScale; } set { heightScale = value; } }
+    public float NoiseDetail { get { return noiseDetail; } set { noiseDetail = value; } }
+
     [SerializeField] private int seedChange;
     private int seed;
 
     [Header("Track Settings")]
     [SerializeField] private Mesh2D crossSectionMesh;
 
-    [SerializeField] private int loopsPerVisualSegment;
-    [SerializeField] private int loopsPerColliderSegment;
+    public Mesh2D CrossSectionMesh { get { return crossSectionMesh; } set { crossSectionMesh = value; } }
+
+    [SerializeField] private int minloopsPerVisualSegment;
+    [SerializeField] private int minloopsPerColliderSegment;
+    [SerializeField] private int loopsPerSegmentLength;
+
+    [SerializeField] private float loopsPerVisualCurvature;
+    [SerializeField] private float loopsPerColliderCurvature;
 
 
     [Header("Terrain Settings")]
@@ -31,7 +42,6 @@ public class MeshGenerator : MonoBehaviour
     [SerializeField] private int visualTerrainSegments;
     [SerializeField] private int colliderTerrainSegments;
 
-    [SerializeField] private float terrainYOffset;
     [SerializeField] private float terrainUVScale;
 
     private Mesh trackVisualMesh;
@@ -43,6 +53,15 @@ public class MeshGenerator : MonoBehaviour
 
     private void Awake()
     {
+        if(Instance != null)
+        {
+            Destroy(this);
+        }
+        else
+        {
+            Instance = this;
+        }
+
         // Initialise meshes and set them
         trackVisualMesh = new();
         trackVisualMesh.name = "Track Visual";
@@ -69,10 +88,10 @@ public class MeshGenerator : MonoBehaviour
     public OrientatedPoint Generate(List<Segment> spline)
     {
         // Generate track meshes
-        OrientatedPoint trackStartPoint = GenerateTrackMesh(trackVisualMesh, true, spline, loopsPerVisualSegment);
+        OrientatedPoint trackStartPoint = GenerateTrackMesh(trackVisualMesh, true, spline, minloopsPerVisualSegment, loopsPerVisualCurvature);
         trackMeshRenderer.material = crossSectionMesh.Material;
 
-        GenerateTrackMesh(trackColliderMesh, false, spline, loopsPerColliderSegment);
+        GenerateTrackMesh(trackColliderMesh, false, spline, minloopsPerColliderSegment, loopsPerColliderCurvature);
 
         // Generate terrain meshes
         GenerateTerrainMesh(terrainVisualMesh, true, visualTerrainSegments);
@@ -89,42 +108,36 @@ public class MeshGenerator : MonoBehaviour
     }
 
     // Generates a container mesh of the given spline and applies it to the given mesh, returns the start orientated point of the spline
-    private OrientatedPoint GenerateTrackMesh(Mesh trackMesh, bool isVisual, List<Segment> spline, int loopsPerSegment)
+    private OrientatedPoint GenerateTrackMesh(Mesh trackMesh, bool isVisual, List<Segment> spline, int minLoopsPerSegment, float loopsPerCurvature)
     {
         MeshContainer meshContainer = new();
 
-        OrientatedPoint startPoint = null;
+        OrientatedPoint trackStartPoint = null;
 
-        float segmentLength = 0f;
+        int[] loopsPerSegment = new int[spline.Count];
 
         // Iterate through each spline segment and number of loops for each segment
         for (int segment = 0; segment < spline.Count; segment++)
         {
-            if (isVisual)
-            {
-                segmentLength = ApproxSegmentLength(spline[segment], loopsPerSegment * 2);
-            }
+            float curvature = CurvatureOverSegment(spline[segment > 0 ? (segment - 1) : (spline.Count - 1)], spline[segment], spline[(segment + 1) % spline.Count]);
+            loopsPerSegment[segment] = Mathf.Clamp((int) (loopsPerCurvature * curvature), minLoopsPerSegment, 1000);
 
-            for (int loop = 0; loop < loopsPerSegment; loop++)
+            float segmentLength = isVisual ? ApproxSegmentLength(spline[segment], loopsPerSegmentLength) : 0;
+
+            for (int loop = 0; loop < loopsPerSegment[segment]; loop++)
             {
                 // Calculate distance along segment for this loop, find its orientation and respective height on nosie map
-                float t = loop / (loopsPerSegment - 1f);
+                float t = loop / (loopsPerSegment[segment] - 1f);
 
                 OrientatedPoint orientatedPoint = new OrientatedPoint(spline[segment > 0 ? (segment - 1) : (spline.Count - 1)], spline[segment], spline[(segment + 1) % spline.Count], t);
 
-                Vector3 offset = new Vector3(0, CalculateHeight(orientatedPoint.Position), 0);
-
-                if (segment == 0 && loop == 0)
-                {
-                    Vector3 position = orientatedPoint.Position + offset;
-                    startPoint = new OrientatedPoint(position, orientatedPoint.Rotation);
-                }
+                Vector3 offset = new Vector3(0, CalculateLoopHeight(orientatedPoint), 0);
 
                 // Iterate through each vertex on the cross section and add it to our mesh container, transforming the local space to the world space
                 // with the orientation of this spline point
-                for (int j = 0; j < crossSectionMesh.VertexCount; j++)
+                for (int vert = 0; vert < crossSectionMesh.VertexCount; vert++)
                 {
-                    Vertex vertex = crossSectionMesh.Vertices[j];
+                    Vertex vertex = crossSectionMesh.Vertices[vert];
 
                     meshContainer.Vertices.Add(orientatedPoint.LocalToWorldPosition(vertex.Position) + offset);
 
@@ -136,16 +149,24 @@ public class MeshGenerator : MonoBehaviour
                         meshContainer.Uvs.Add(new Vector2(vertex.U, t * segmentLength / uSpan));
                     }
                 }
+
+                if (segment == 0 && loop == 0)
+                {
+                    Vector3 position = orientatedPoint.Position + offset;
+                    trackStartPoint = new OrientatedPoint(position, orientatedPoint.Rotation);
+                }
             }
         }
+
+        int totalLoops = 0;
 
         // Repeat iteration
         for (int segment = 0; segment < spline.Count; segment++)
         {
             // Find the starting index of this spline segment
-            int segmentRootindex = segment * loopsPerSegment * crossSectionMesh.VertexCount;
+            int segmentRootindex = totalLoops * crossSectionMesh.VertexCount;
 
-            for (int loop = 0; loop < loopsPerSegment - 1; loop++)
+            for (int loop = 0; loop < loopsPerSegment[segment] - 1; loop++)
             {
                 // Find the starting index of this loop and the next loop with respect to the entire spline
                 int rootIndex = segmentRootindex + (loop * crossSectionMesh.VertexCount);
@@ -172,6 +193,8 @@ public class MeshGenerator : MonoBehaviour
                     meshContainer.Triangles.Add(end1);
                 }
             }
+
+            totalLoops += loopsPerSegment[segment];
         }
 
         // Clear any data from the mesh and then set all values
@@ -186,7 +209,18 @@ public class MeshGenerator : MonoBehaviour
             trackMesh.SetUVs(0, meshContainer.Uvs);
         }
 
-        return startPoint;
+        return trackStartPoint;
+    }
+
+    private float CurvatureOverSegment(Segment previousSegment, Segment currentSegment, Segment nextSegment)
+    {
+        OrientatedPoint start = new OrientatedPoint(previousSegment, currentSegment, nextSegment, 0);
+        OrientatedPoint end = new OrientatedPoint(previousSegment, currentSegment, nextSegment, 1);
+
+        float angle = Quaternion.Angle(start.Rotation, end.Rotation);
+        float height = Mathf.Abs(CalculatePointHeight(start.Position) - CalculatePointHeight(end.Position));
+
+        return (angle / 180) + (2 * height / heightScale);
     }
 
     // Calculates numerically the length of the given segment using steps number of iterations
@@ -228,7 +262,7 @@ public class MeshGenerator : MonoBehaviour
             for(int z = 0; z < terrainSegments + 1; z++)
             {
                 float zPos = (z * zSpacing) - (terrainSize / 2);
-                float yPos = CalculateHeight(new Vector3(xPos, 0, zPos)) + terrainYOffset;
+                float yPos = CalculatePointHeight(new Vector3(xPos, 0, zPos));
 
                 meshContainer.Vertices.Add(new Vector3(xPos, yPos, zPos));
 
@@ -279,8 +313,26 @@ public class MeshGenerator : MonoBehaviour
         }
     }
 
+    // Calculates the maximum relative height of the cross section mesh vertices
+    private float CalculateLoopHeight(OrientatedPoint orientatedPoint)
+    {
+        float maxHeight = -0.5f * heightScale;
+
+        for (int vert = 0; vert < crossSectionMesh.VertexCount; vert++)
+        {
+            float height = CalculatePointHeight(orientatedPoint.LocalToWorldPosition(crossSectionMesh.Vertices[vert].Position));
+
+            if(height > maxHeight)
+            {
+                maxHeight = height;
+            }
+        }
+
+        return maxHeight;
+    }
+
     // Calculates height at the given points coordinate on perlin noise map
-    private float CalculateHeight(Vector3 point)
+    private float CalculatePointHeight(Vector3 point)
     {
         float xCoord = point.x / 60 * noiseDetail + seed;
         float yCoord = point.z / 60 * noiseDetail + seed;
@@ -362,8 +414,8 @@ public class OrientatedPoint
 
     public OrientatedPoint(Vector3 position, Quaternion rotation)
     {
-        this.Position = position;
-        this.Rotation = rotation;
+        Position = position;
+        Rotation = rotation;
     }
 
     // Transforms local position to world space
