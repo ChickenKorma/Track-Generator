@@ -7,12 +7,6 @@ public class SplineGenerator : MonoBehaviour
 
     [Range(0f, 1f)]
     [SerializeField] private float splineAlpha;
-    [Range(0f, 1f)]
-    [SerializeField] private float splineStep;
-
-    [SerializeField] private LineRenderer lineRenderer;
-
-    [SerializeField] private bool drawSpline;
 
     private void Awake()
     {
@@ -26,21 +20,8 @@ public class SplineGenerator : MonoBehaviour
         }
     }
 
-    // Generates and visualises the spline for the given points
-    public List<Segment> Generate(List<Vector3> points)
-    {
-        List<Segment> spline = CalculateSpline(points);
-
-        if (drawSpline)
-        {
-            VisualiseSpline(spline);
-        }
-
-        return spline;
-    }
-
     // Determines the spline segments for the given points in a loop and returns a list of segment objects
-    private List<Segment> CalculateSpline(List<Vector3> points)
+    public List<Segment> Generate(List<Vector3> points)
     {
         List<Segment> splineSegments = new();
 
@@ -68,25 +49,6 @@ public class SplineGenerator : MonoBehaviour
         Vector3 d = p1;
 
         return new Segment(a, b, c, d);
-    }
-
-    // Determines render points every splineStep along the spline segments and sets these in the line renderer
-    private void VisualiseSpline(List<Segment> spline)
-    {
-        List<Vector3> renderPoints = new();
-
-        foreach(Segment segment in spline)
-        {
-            for(float t = 0; t < 1; t += splineStep)
-            {
-                Vector3 point = segment.CalculatePoint(t);
-
-                renderPoints.Add(new Vector3(point.x, point.y + 1.0f, point.z));
-            }
-        }
-
-        lineRenderer.positionCount = renderPoints.Count;
-        lineRenderer.SetPositions(renderPoints.ToArray());
     }
 }
 

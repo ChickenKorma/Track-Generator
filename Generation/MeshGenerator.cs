@@ -18,8 +18,8 @@ public class MeshGenerator : MonoBehaviour
     [SerializeField] private float heightScale;
     [SerializeField] private float noiseDetail;
 
-    public float HeightScale { get { return heightScale; } set { heightScale = value; } }
-    public float NoiseDetail { get { return noiseDetail; } set { noiseDetail = value; } }
+    public float HeightScale { set { heightScale = value; } }
+    public float NoiseDetail { set { noiseDetail = value; } }
 
     [SerializeField] private int seedChange;
     private int seed;
@@ -27,7 +27,7 @@ public class MeshGenerator : MonoBehaviour
     [Header("Track Settings")]
     [SerializeField] private Mesh2D crossSectionMesh;
 
-    public Mesh2D CrossSectionMesh { get { return crossSectionMesh; } set { crossSectionMesh = value; } }
+    public Mesh2D CrossSectionMesh { set { crossSectionMesh = value; } }
 
     [SerializeField] private int minloopsPerVisualSegment;
     [SerializeField] private int minloopsPerColliderSegment;

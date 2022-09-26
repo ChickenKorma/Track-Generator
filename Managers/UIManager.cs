@@ -5,7 +5,6 @@ using UnityEngine;
 
 public class UIManager : MonoBehaviour
 {
-    [SerializeField] private GameObject gameUI;
     [SerializeField] private GameObject settingsUI;
     [SerializeField] private GameObject exitUI;
 
@@ -15,29 +14,18 @@ public class UIManager : MonoBehaviour
     [SerializeField] private CinemachineVirtualCamera trackViewVCam;
 
     [SerializeField] private TMP_Text handbrakeText;
+    [SerializeField] private TMP_Text timeText;
 
     private OrientatedPoint carSpawnPoint;
 
-    [SerializeField] private Mesh2D basicRoad;
+    [SerializeField] private Mesh2D normalRoad;
     [SerializeField] private Mesh2D curbRoad;
     [SerializeField] private Mesh2D wallRoad;
 
-    private int initialPointsStart;
-    private float maxDisplacementStart;
-    private float heightScaleStart;
-    private float noiseDetailStart;
-
-
     private void Start()
     {
-        gameUI.SetActive(true);
         settingsUI.SetActive(false);
         exitUI.SetActive(false);
-
-        initialPointsStart = PointGenerator.Instance.InitialPoints;
-        maxDisplacementStart = PointGenerator.Instance.MaxDisplacement;
-        heightScaleStart = MeshGenerator.Instance.HeightScale;
-        noiseDetailStart = MeshGenerator.Instance.NoiseDetail;
 
         MakeTrack();
     }
@@ -70,7 +58,8 @@ public class UIManager : MonoBehaviour
         
         carSpawnPoint = MeshGenerator.Instance.Generate(spline);
 
-        Debug.Log("Generation Time: " + ((Time.realtimeSinceStartup - startTime) * 1000f) + " milliseconds");
+        float generationTime = (Time.realtimeSinceStartup - startTime) * 1000f;
+        timeText.text = "Generated in " + generationTime.ToString("F2") + " milliseconds";
 
         SetCarAndCamera();
     }
@@ -148,11 +137,11 @@ public class UIManager : MonoBehaviour
 
 
     // Mesh settings
-    public void BasicRoadSelect(bool selected)
+    public void NormalRoadSelect(bool selected)
     {
         if (selected)
         {
-            MeshGenerator.Instance.CrossSectionMesh = basicRoad;
+            MeshGenerator.Instance.CrossSectionMesh = normalRoad;
         }
     }
 

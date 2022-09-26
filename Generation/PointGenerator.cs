@@ -11,7 +11,7 @@ public class PointGenerator : MonoBehaviour
 
     [SerializeField] private int initialPoints;
 
-    public int InitialPoints { get { return initialPoints; } set { initialPoints = value; } }
+    public int InitialPoints { set { initialPoints = value; } }
 
 
     [Header("Point Limits")]
@@ -27,7 +27,7 @@ public class PointGenerator : MonoBehaviour
     [SerializeField] private float maxDisplacement;
     [SerializeField] private float displacementScale;
 
-    public float MaxDisplacement { get { return maxDisplacement; } set { maxDisplacement = value; } }
+    public float MaxDisplacement { set { maxDisplacement = value; } }
 
     private enum Orientation
     {
