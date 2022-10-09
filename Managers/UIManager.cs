@@ -2,6 +2,7 @@ using Cinemachine;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class UIManager : MonoBehaviour
 {
@@ -21,6 +22,11 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Mesh2D normalRoad;
     [SerializeField] private Mesh2D curbRoad;
     [SerializeField] private Mesh2D wallRoad;
+
+    [SerializeField] private Texture2D pointerTexture;
+    [SerializeField] private Texture2D handTexture;
+
+    [SerializeField] private Vector2 cursorHotspot;
 
     private void Start()
     {
@@ -45,6 +51,24 @@ public class UIManager : MonoBehaviour
         handbrakeText.text = "Handbrake " + (DrivingController.Instance.Handbrake ? "On" : "Off");
     }
 
+    // Deselects the currently selected UI element in the event system, fixes visuals of buttons
+    public void DeselectUIObject()
+    {
+        EventSystem.current.SetSelectedGameObject(null);
+    }
+
+    // Sets the cursor to a hand
+    public void OnCursorEnter()
+    {
+        Cursor.SetCursor(handTexture, cursorHotspot, CursorMode.Auto);
+    }
+
+    // Sets the cursor to a pointer
+    public void OnCursorExit()
+    {
+        Cursor.SetCursor(pointerTexture, cursorHotspot, CursorMode.Auto);
+    }
+
     //--------------------------------------------- GAME UI ------------------------------------------------------
 
     // Generates and visualises a new track
@@ -62,6 +86,8 @@ public class UIManager : MonoBehaviour
         timeText.text = "Generated in " + generationTime.ToString("F2") + " milliseconds";
 
         SetCarAndCamera();
+
+        DeselectUIObject();
     }
 
     // Switches to the track view cam
@@ -73,6 +99,8 @@ public class UIManager : MonoBehaviour
         trackViewVCam.Priority = 1;
 
         DrivingController.Instance.Handbrake = true;
+
+        DeselectUIObject();
     }
 
     // Switches to the car chase cam
@@ -80,6 +108,8 @@ public class UIManager : MonoBehaviour
     {
         carChaseVCam.Priority = 1;
         trackViewVCam.Priority = 0;
+
+        DeselectUIObject();
     }
 
     // Sets the car transform and camera rotation 

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.EventSystems;
 
 public class SliderUpdate: MonoBehaviour
 {
@@ -26,6 +27,7 @@ public class SliderUpdate: MonoBehaviour
         UpdateValue();
     }
 
+    // Update the accompanying text with the correct decimal places
     public void UpdateValue()
     {
         if (intValue)
@@ -36,12 +38,23 @@ public class SliderUpdate: MonoBehaviour
         {
             valueText.text = slider.value.ToString("F2");
         }
+
+        DeselectUIObject();
     }
 
+    // Reset teh slider value to the starting value
     public void ResetValue()
     {
         slider.value = initialValue;
 
         UpdateValue();
+
+        DeselectUIObject();
+    }
+
+    // Deselects the currently selected UI element in the event system, fixes visuals of buttons
+    public void DeselectUIObject()
+    {
+        EventSystem.current.SetSelectedGameObject(null);
     }
 }
