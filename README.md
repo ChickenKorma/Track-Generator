@@ -23,7 +23,7 @@ This is using a technique by Gustavo Maciel detailed in [this article](http://bl
 
 Firstly, we generate a set of random points and calculate their convex hull to give us a looping polygon for the base of our track. To avoid clipping and other issues we space the points out if they are too close together. In order to make it look more like a race track we add a midpoint on each line of the hull polygon and displace that to create more curves and corners. Finally, we space the points again and ensure that no corner is too tight.
 
-To convert this technique to a 3D space we generate a 2D perlin noise map and then offset the z axis of each point by the noise value at that coordinate. Note that this step is actually completed with the mesh generation so that we can match up the terrain to the track.
+To convert this technique to a 3D space we generate a 2D perlin noise map and then offset the y axis of each point by the noise value at that coordinate. Note that this step is actually completed with the mesh generation so that we can match up the terrain to the track.
 
 ### Spline
 We convert each set of consecutive points into a spline segment using catmull-rom splines.
@@ -42,4 +42,4 @@ The normals are simply set from the 2D mesh but converted in the orientation of 
 A mesh collider for the track is generated the same way, just without the need for the UV coordinates or normals, using a lower number of points to help performance.
 
 ### Terrain Mesh
-To create the terrain we generate a grid of points, drawing triangles between neighbouring points and setting UV coordinates as a percentage of the grid length, these coordinates are scaled up so that the texture will tile as this is a particularly large mesh. As mentioned before, we use the same perlin noise map to displace the z coordinates of the grid as we used for the track. Again a mesh collider is then generated with less points.
+To create the terrain we generate a grid of points, drawing triangles between neighbouring points and setting UV coordinates as a percentage of the grid length, these coordinates are scaled up so that the texture will tile as this is a particularly large mesh. As mentioned before, we use the same perlin noise map to displace the y coordinates of the grid as we used for the track. Again a mesh collider is then generated with less points.
